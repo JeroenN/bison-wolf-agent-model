@@ -1,9 +1,22 @@
+globals [
+  slowdown-speed-multiplier
+  slowdown-energy-multiplier
+  snow-clear-radius
+  snow-clear-angle
+  energy-consumption
+  number-of-calves
+  calf-stat-multiplier
+]
+
 turtles-own [
+  creature-type          ;; bison/calf/wolf
   visible-neighbors      ;; what birds can I see nearby?
   closest-neighbor       ;; who's the closest bird I can see?
   speed                  ;; what speed am I flying at?
   happy?                 ;; am I content with my current place?
   angle
+  energy                 ;; amount of energy left to do things
+  slowed?                 ;; is the turtle slowed by the snow?
 ]
 
 ;;
@@ -12,11 +25,31 @@ turtles-own [
 
 to setup
   clear-all
-  create-turtles number-of-birds [
+  set slowdown-speed-multiplier 0.5
+  set slowdown-energy-multiplier 2
+  set snow-clear-radius 1
+  set snow-clear-angle 60
+  set energy-consumption 10
+  set number-of-calves number-of-bisons * calve-pct
+  set calf-stat-multiplier 0.8
+  create-turtles number-of-bisons [
+    set creature-type "bison"
     setxy random-xcor random-ycor
     set speed base-speed
     set size 1.5 ; easier to see
     set happy? false
+    set energy 9001
+    set slowed? false
+    recolor
+  ]
+  create-turtles number-of-calves [
+    set creature-type "calf"
+    setxy random-xcor random-ycor
+    set speed base-speed * calf-stat-multiplier
+    set size 1.5 * calf-stat-multiplier; easier to see
+    set happy? false
+    set energy 9001 * calf-stat-multiplier
+    set slowed? false
     recolor
   ]
   reset-ticks
@@ -28,8 +61,17 @@ end
 
 to go
   ask turtles [
-    clear-snow
-    set speed base-speed
+    clear-snow  ;; also sets the agenent slowed? to true if it needs to clear snow
+    ifelse slowed?
+    [
+      set energy energy - energy-consumption * slowdown-energy-multiplier
+      set speed base-speed * slowdown-speed-multiplier
+      set slowed? false
+    ]
+    [
+      set energy energy - energy-consumption
+      set speed base-speed
+    ]
     set visible-neighbors (other turtles in-cone vision-distance vision-cone)
     ifelse any? visible-neighbors
     [
@@ -45,10 +87,14 @@ to go
 end
 
 to clear-snow
-      ask patches in-cone 1 60
-      [
-        set pcolor grey
-      ]
+  if pcolor = black or any? patches with [pcolor = black] in-cone snow-clear-radius snow-clear-angle [
+      ;set pcolor red
+      set slowed? true
+  ]
+  ask patches in-cone snow-clear-radius snow-clear-angle
+  [
+    set pcolor grey
+  ]
 end
 to adjust ;; turtle procedure
   set closest-neighbor min-one-of visible-neighbors [distance myself]
@@ -316,10 +362,10 @@ show-unhappy?
 SLIDER
 10
 10
-185
+192
 43
-number-of-birds
-number-of-birds
+number-of-bisons
+number-of-bisons
 0
 100
 15.0
@@ -369,6 +415,21 @@ speed-change-factor
 1
 0.1
 .05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+755
+20
+927
+53
+calve-pct
+calve-pct
+0
+100
+10.0
+1
 1
 NIL
 HORIZONTAL
