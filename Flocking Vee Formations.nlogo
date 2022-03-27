@@ -12,6 +12,7 @@ turtles-own [
   creature-type          ;; bison/calf/wolf
   visible-neighbors      ;; what birds can I see nearby?
   closest-neighbor       ;; who's the closest bird I can see?
+  own-base-speed         ;; allows for variation in base speed based on creature type
   speed                  ;; what speed am I flying at?
   happy?                 ;; am I content with my current place?
   angle
@@ -30,11 +31,12 @@ to setup
   set snow-clear-radius 1
   set snow-clear-angle 60
   set energy-consumption 10
-  set number-of-calves number-of-bisons * calve-pct
+  set number-of-calves number-of-bisons * calve-pct / 100
   set calf-stat-multiplier 0.8
   create-turtles number-of-bisons [
     set creature-type "bison"
     setxy random-xcor random-ycor
+    set own-base-speed base-speed
     set speed base-speed
     set size 1.5 ; easier to see
     set happy? false
@@ -45,6 +47,7 @@ to setup
   create-turtles number-of-calves [
     set creature-type "calf"
     setxy random-xcor random-ycor
+    set own-base-speed base-speed * calf-stat-multiplier
     set speed base-speed * calf-stat-multiplier
     set size 1.5 * calf-stat-multiplier; easier to see
     set happy? false
@@ -65,12 +68,12 @@ to go
     ifelse slowed?
     [
       set energy energy - energy-consumption * slowdown-energy-multiplier
-      set speed base-speed * slowdown-speed-multiplier
+      set speed own-base-speed * slowdown-speed-multiplier
       set slowed? false
     ]
     [
       set energy energy - energy-consumption
-      set speed base-speed
+      set speed own-base-speed
     ]
     set visible-neighbors (other turtles in-cone vision-distance vision-cone)
     ifelse any? visible-neighbors
@@ -156,6 +159,9 @@ to recolor ;; turtle procedure
     ;; note that the color is based on WHO number, not RANDOM, so birds
     ;; won't change color if the SHOW-UNHAPPY? switch is flicked on and off
     set color yellow - 2 + (who mod 7)
+  ]
+  if creature-type = "calf" [
+    set color color + 10
   ]
 end
 
