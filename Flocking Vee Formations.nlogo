@@ -125,22 +125,14 @@ to go
       set happy? true
     ]
     ;recolor
-    fd speed  ; fly forward!
+    fd speed  ; move forward!
   ]
   ;let escape-task select-escape-task
   let t 0
   repeat 10 [
     if t mod (11 - update-freq) = 0 [
       let dt 1 / update-freq
-      ;ask fish [
-      ;  let weight 1
-      ;  find-nearest-wolf
-      ;  if nearest-wolf != nobody [
-      ;    ( select-escape-task dt )
-      ;    set weight flocking-weight
-      ;  ]
-      ;  flock dt * weight
-      ;]
+      ;; add escape task behavior
     ]
     if t mod (11 - wolf-update-freq) = 0 [
       let dt 1 / wolf-update-freq
@@ -149,10 +141,7 @@ to go
         hunt dt
       ]
     ]
-    ;ask fish [
-    ;  rt delta-noise
-    ;  fd delta-speed
-    ;]
+    ;; add bison fleeing
     ask wolves [
       clear-snow
       rt delta-noise
@@ -187,7 +176,7 @@ end
 to adjust ;; bison procedure
   set closest-neighbor min-one-of visible-neighbors [distance myself]
   let closest-distance distance closest-neighbor
-  ;; if I am too far away from the nearest bird I can see, then try to get near them
+  ;; if I am too far away from the nearest bison I can see, then try to get near them
   if closest-distance > updraft-distance [
     turn-towards (towards closest-neighbor)
     ;; speed up to catch up
@@ -219,7 +208,7 @@ to adjust ;; bison procedure
   ]
 
 
-  ;; if i am too close to the nearest bird slow down
+  ;; if i am too close to the nearest bison slow down
   if closest-distance < too-close [
     set happy? false
     ;; speed down to let the bird in front of me move away
@@ -240,8 +229,8 @@ to recolor ;; bison procedure
       [ set color white ]
       [ set color red ]
   ][
-    ;; This changes the bird's color some shade of yellow --
-    ;; note that the color is based on WHO number, not RANDOM, so birds
+    ;; This changes the bison's color some shade of yellow --
+    ;; note that the color is based on WHO number, not RANDOM, so bisons
     ;; won't change color if the SHOW-UNHAPPY? switch is flicked on and off
     set color yellow - 2 + (who mod 7)
   ]
@@ -598,10 +587,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-755
-20
-927
-53
+10
+500
+190
+533
 calve-pct
 calve-pct
 0
@@ -613,10 +602,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-1020
-20
-1197
-53
+950
+10
+1155
+43
 wolf-noise-stddev
 wolf-noise-stddev
 0
@@ -628,10 +617,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-1025
-80
-1197
-113
+730
+10
+930
+43
 wolf-population
 wolf-population
 0
@@ -643,30 +632,30 @@ NIL
 HORIZONTAL
 
 CHOOSER
-1030
-135
-1168
-180
+980
+95
+1118
+140
 update-freq
 update-freq
 1 2 5 10
 0
 
 CHOOSER
-1040
-195
-1182
-240
+980
+155
+1122
+200
 wolf-update-freq
 wolf-update-freq
 1 2 5 10
 0
 
 SLIDER
-1035
-255
-1262
-288
+735
+160
+940
+193
 wolf-speed
 wolf-speed
 0
@@ -678,10 +667,10 @@ patches/tick
 HORIZONTAL
 
 SWITCH
-1030
-320
-1147
-353
+770
+110
+887
+143
 hunting?
 hunting?
 1
@@ -689,10 +678,10 @@ hunting?
 -1000
 
 SLIDER
-1045
-385
-1217
-418
+735
+335
+940
+368
 detection-range
 detection-range
 0
@@ -704,10 +693,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-1055
-445
-1227
-478
+735
+380
+940
+413
 wolf-vision
 wolf-vision
 0
@@ -719,10 +708,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-1050
-505
-1222
-538
+735
+430
+940
+463
 wolf-FOV
 wolf-FOV
 0
@@ -734,10 +723,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-1055
-565
-1227
-598
+735
+480
+940
+513
 lock-on-distance
 lock-on-distance
 0
@@ -749,10 +738,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-770
-90
-967
-123
+950
+50
+1155
+83
 switch-penalty
 switch-penalty
 0
@@ -764,10 +753,10 @@ ticks
 HORIZONTAL
 
 SLIDER
-785
-150
-957
-183
+735
+205
+940
+238
 max-hunt-turn
 max-hunt-turn
 0
@@ -779,10 +768,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-775
-205
-947
-238
+735
+250
+940
+283
 catch-distance
 catch-distance
 0
@@ -794,10 +783,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-775
-260
-1007
-293
+735
+290
+940
+323
 catch-handle-time
 catch-handle-time
 0
@@ -809,10 +798,10 @@ ticks
 HORIZONTAL
 
 MONITOR
-760
-320
-822
-365
+730
+50
+792
+95
 NIL
 catches
 17
@@ -820,10 +809,10 @@ catches
 11
 
 MONITOR
-840
-325
-897
-370
+800
+50
+857
+95
 NIL
 losts
 17
@@ -831,10 +820,10 @@ losts
 11
 
 MONITOR
-910
-325
-977
-370
+865
+50
+932
+95
 NIL
 lock-ons
 17
