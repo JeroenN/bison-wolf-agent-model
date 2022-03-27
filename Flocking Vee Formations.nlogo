@@ -1,3 +1,6 @@
+breed [bisons bison]
+breed [wolf wolves]
+
 globals [
   slowdown-speed-multiplier
   slowdown-energy-multiplier
@@ -8,16 +11,18 @@ globals [
   calf-stat-multiplier
 ]
 
-turtles-own [
-  creature-type          ;; bison/calf/wolf
+bisons-own [
+  calf?                  ;; is this a baby?
   visible-neighbors      ;; what birds can I see nearby?
   closest-neighbor       ;; who's the closest bird I can see?
   own-base-speed         ;; allows for variation in base speed based on creature type
+  tick-base-speed        ;; accounts for slowed speed
   speed                  ;; what speed am I flying at?
   happy?                 ;; am I content with my current place?
   angle
-  energy                 ;; amount of energy left to do things
-  slowed?                 ;; is the turtle slowed by the snow?
+  energy                  ;; amount of energy left to do things
+  tick-energy-consumption ;; accounts for slowed
+  slowed?                 ;; is the bison slowed by the snow?
 ]
 
 ;;
@@ -26,29 +31,27 @@ turtles-own [
 
 to setup
   clear-all
-  set slowdown-speed-multiplier 0.5
+  set slowdown-speed-multiplier 0.6
   set slowdown-energy-multiplier 2
   set snow-clear-radius 1
   set snow-clear-angle 60
   set energy-consumption 10
   set number-of-calves number-of-bisons * calve-pct / 100
-  set calf-stat-multiplier 0.8
-  create-turtles number-of-bisons [
-    set creature-type "bison"
+  set calf-stat-multiplier 1
+  create-bisons number-of-bisons [
+    set calf? false
     setxy random-xcor random-ycor
     set own-base-speed base-speed
-    set speed base-speed
     set size 1.5 ; easier to see
     set happy? false
     set energy 9001
     set slowed? false
     recolor
   ]
-  create-turtles number-of-calves [
-    set creature-type "calf"
+  create-bisons number-of-calves [
+    set calf? true
     setxy random-xcor random-ycor
     set own-base-speed base-speed * calf-stat-multiplier
-    set speed base-speed * calf-stat-multiplier
     set size 1.5 * calf-stat-multiplier; easier to see
     set happy? false
     set energy 9001 * calf-stat-multiplier
@@ -63,19 +66,21 @@ end
 ;;
 
 to go
-  ask turtles [
+  ask bisons [
     clear-snow  ;; also sets the agenent slowed? to true if it needs to clear snow
     ifelse slowed?
     [
-      set energy energy - energy-consumption * slowdown-energy-multiplier
-      set speed own-base-speed * slowdown-speed-multiplier
+      set tick-energy-consumption energy-consumption * slowdown-energy-multiplier
+      set tick-base-speed own-base-speed * slowdown-speed-multiplier
       set slowed? false
     ]
     [
-      set energy energy - energy-consumption
-      set speed own-base-speed
+      set tick-energy-consumption energy-consumption
+      set tick-base-speed own-base-speed
     ]
-    set visible-neighbors (other turtles in-cone vision-distance vision-cone)
+    set speed tick-base-speed
+    set energy energy - tick-energy-consumption
+    set visible-neighbors (other bisons in-cone vision-distance vision-cone)
     ifelse any? visible-neighbors
     [
       adjust
@@ -99,14 +104,15 @@ to clear-snow
     set pcolor grey
   ]
 end
-to adjust ;; turtle procedure
+
+to adjust ;; bison procedure
   set closest-neighbor min-one-of visible-neighbors [distance myself]
   let closest-distance distance closest-neighbor
   ;; if I am too far away from the nearest bird I can see, then try to get near them
   if closest-distance > updraft-distance [
     turn-towards (towards closest-neighbor)
     ;; speed up to catch up
-    set speed base-speed * (1 + speed-change-factor)
+    set speed tick-base-speed * (1 + speed-change-factor)
     set happy? false
     stop
   ]
@@ -138,7 +144,7 @@ to adjust ;; turtle procedure
   if closest-distance < too-close [
     set happy? false
     ;; speed down to let the bird in front of me move away
-    set speed base-speed * (1 - speed-change-factor)
+    set speed tick-base-speed * (1 - speed-change-factor)
     stop
   ]
 
@@ -149,7 +155,7 @@ to adjust ;; turtle procedure
   set happy? true
 end
 
-to recolor ;; turtle procedure
+to recolor ;; bison procedure
   ifelse show-unhappy? [
     ifelse happy?
       [ set color white ]
@@ -160,21 +166,21 @@ to recolor ;; turtle procedure
     ;; won't change color if the SHOW-UNHAPPY? switch is flicked on and off
     set color yellow - 2 + (who mod 7)
   ]
-  if creature-type = "calf" [
+  if calf? [
     set color color + 10
   ]
 end
 
 ;;
-;; TURTLE UTILITY PROCEDURES, for turning gradually towards a new heading
+;; bison UTILITY PROCEDURES, for turning gradually towards a new heading
 ;;
 
-to turn-towards [new-heading]  ;; turtle procedure
+to turn-towards [new-heading]  ;; bison procedure
   ;print new-heading
   turn-at-most (subtract-headings new-heading heading)
 end
 
-to turn-at-most [turn]  ;; turtle procedure
+to turn-at-most [turn]  ;; bison procedure
   ifelse abs turn > max-turn [
     ifelse turn >= 0
       [ rt max-turn ]
