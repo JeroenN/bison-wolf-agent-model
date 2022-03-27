@@ -1,5 +1,5 @@
 breed [bisons bison]
-breed [wolf wolves]
+breed [wolves wolf]
 
 globals [
   slowdown-speed-multiplier
@@ -9,6 +9,13 @@ globals [
   energy-consumption
   number-of-calves
   calf-stat-multiplier
+
+  catches
+  losts
+  lock-ons
+  counter
+  ordetect
+  prevprey
 ]
 
 bisons-own [
@@ -24,6 +31,14 @@ bisons-own [
   tick-energy-consumption ;; accounts for slowed
   slowed?                 ;; is the bison slowed by the snow?
 ]
+
+wolves-own [
+  nearest-prey
+  locked-on          ;; locked on prey if any
+  delta-noise        ;; random rotation per update
+  handle-time        ;; count down handle time
+]
+
 
 ;;
 ;; Setup Procedures
@@ -58,6 +73,9 @@ to setup
     set slowed? false
     recolor
   ]
+  set counter 0
+  set lock-ons 0
+  set ordetect 8
   reset-ticks
 end
 
@@ -66,6 +84,19 @@ end
 ;;
 
 to go
+  ;; wolf prep
+  ask wolves [
+    set delta-noise 0.1 * (random-normal 0 wolf-noise-stddev)
+  ]
+  if ticks = 300 [
+   create-wolves wolf-population [
+    set color green
+    set size 2.0
+    setxy random-xcor random-ycor
+    set nearest-prey nobody
+    set locked-on nobody
+  ]]
+  ;; wolf prep end
   ask bisons [
     clear-snow  ;; also sets the agenent slowed? to true if it needs to clear snow
     ifelse slowed?
@@ -91,6 +122,43 @@ to go
     ;recolor
     fd speed  ; fly forward!
   ]
+  ;let escape-task select-escape-task
+  let t 0
+  repeat 10 [
+    if t mod (11 - update-freq) = 0 [
+      let dt 1 / update-freq
+      ;ask fish [
+      ;  let weight 1
+      ;  find-nearest-wolf
+      ;  if nearest-wolf != nobody [
+      ;    ( select-escape-task dt )
+      ;    set weight flocking-weight
+      ;  ]
+      ;  flock dt * weight
+      ;]
+    ]
+    if t mod (11 - wolf-update-freq) = 0 [
+      let dt 1 / wolf-update-freq
+      ask wolves [
+        select-prey dt
+        hunt dt
+      ]
+    ]
+    ;ask fish [
+    ;  rt delta-noise
+    ;  fd delta-speed
+    ;]
+    ask wolves [
+      rt delta-noise
+      fd 0.1 * wolf-speed
+    ]
+    set t t + 1
+  ]
+  if not hunting?
+  [set counter counter + 1]
+  if counter > 300
+  [set hunting? true
+   set detection-range ordetect]
   tick
 end
 
@@ -190,6 +258,93 @@ to turn-at-most [turn]  ;; bison procedure
   ]
 end
 
+;;; wolf PROCEDURES
+
+to select-prey [dt] ;; wolf procedure
+  set handle-time handle-time - dt
+
+  if handle-time <= 0
+  [
+    set nearest-prey min-one-of bisons with [calf? = true] in-cone wolf-vision wolf-FOV [distance myself]
+    ifelse locked-on != nobody and
+         ((nearest-prey = nobody or distance nearest-prey > lock-on-distance) or
+         (nearest-prey != locked-on))
+      [
+        ;; lost it
+        release-locked-on
+        set handle-time switch-penalty
+        set losts losts + 1
+        set color blue
+        ;stop
+    ]
+    [
+      set color orange  ;; hunting w/o lock-on
+      if nearest-prey != nobody
+      [
+        if distance nearest-prey < lock-on-distance
+        [
+          set locked-on nearest-prey
+          ask locked-on [set color magenta]
+          if nearest-prey != prevprey
+          [
+            set lock-ons lock-ons + 1
+          ]
+          set color red
+          set prevprey nearest-prey
+          set hunting? true
+        ]
+      ]
+    ]
+  ]
+end
+
+to hunt [dt] ;; wolf procedure
+  if nearest-prey != nobody
+  [
+    turn-towards-max towards nearest-prey max-hunt-turn * dt
+    if locked-on != nobody [
+      if locked-on = min-one-of bisons with [calf? = true] in-cone catch-distance 10 [distance myself]
+      [
+        set catches catches + 1
+        release-locked-on
+        set hunting? false
+        set counter 0
+        set detection-range ordetect  ;;;; was: 0
+        set handle-time catch-handle-time
+        rt random-normal 0 45
+        set color green
+      ]
+    ]
+  ]
+end
+
+to release-locked-on
+  if locked-on != nobody [ask locked-on [set color yellow - 2 + random 7]]
+  set locked-on nobody
+  set nearest-prey nobody
+  set prevprey nobody
+end
+
+
+;;; HELPER PROCEDURES
+
+to turn-towards-max [new-heading max-turn-angle]  ;; fish procedure
+  turn-at-most-max (subtract-headings new-heading heading) max-turn-angle
+end
+
+to turn-away-max [new-heading max-turn-angle]  ;; fish procedure
+  turn-at-most-max (subtract-headings heading new-heading) max-turn-angle
+end
+
+;; turn right by "turn" degrees (or left if "turn" is negative),
+;; but never turn more than "max-turn" degrees
+to turn-at-most-max [turn max-turn-angle]  ;; turtle procedure
+  ifelse abs turn > max-turn-angle
+    [ ifelse turn > 0
+        [ rt max-turn ]
+        [ lt max-turn ] ]
+    [ rt turn ]
+end
 
 ; Copyright 2009 Uri Wilensky.
 ; See Info tab for full copyright and license.
@@ -445,6 +600,235 @@ calve-pct
 1
 NIL
 HORIZONTAL
+
+SLIDER
+1020
+20
+1197
+53
+wolf-noise-stddev
+wolf-noise-stddev
+0
+5
+2.0
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1025
+80
+1197
+113
+wolf-population
+wolf-population
+0
+5
+1.0
+1
+1
+NIL
+HORIZONTAL
+
+CHOOSER
+1030
+135
+1168
+180
+update-freq
+update-freq
+1 2 5 10
+0
+
+CHOOSER
+1040
+195
+1182
+240
+wolf-update-freq
+wolf-update-freq
+1 2 5 10
+0
+
+SLIDER
+1035
+255
+1262
+288
+wolf-speed
+wolf-speed
+0
+5
+0.6
+0.1
+1
+patches/tick
+HORIZONTAL
+
+SWITCH
+1030
+320
+1147
+353
+hunting?
+hunting?
+0
+1
+-1000
+
+SLIDER
+1045
+385
+1217
+418
+detection-range
+detection-range
+0
+50
+8.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1055
+445
+1227
+478
+wolf-vision
+wolf-vision
+0
+100
+16.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1050
+505
+1222
+538
+wolf-FOV
+wolf-FOV
+0
+360
+270.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1055
+565
+1227
+598
+lock-on-distance
+lock-on-distance
+0
+5
+5.0
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+770
+90
+967
+123
+switch-penalty
+switch-penalty
+0
+50
+5.0
+1
+1
+ticks
+HORIZONTAL
+
+SLIDER
+785
+150
+957
+183
+max-hunt-turn
+max-hunt-turn
+0
+20
+10.0
+0.25
+1
+NIL
+HORIZONTAL
+
+SLIDER
+775
+205
+947
+238
+catch-distance
+catch-distance
+0
+1
+0.5
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+775
+260
+1007
+293
+catch-handle-time
+catch-handle-time
+0
+1000
+50.0
+1
+1
+ticks
+HORIZONTAL
+
+MONITOR
+760
+320
+822
+365
+NIL
+catches
+17
+1
+11
+
+MONITOR
+840
+325
+897
+370
+NIL
+losts
+17
+1
+11
+
+MONITOR
+910
+325
+977
+370
+NIL
+lock-ons
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
