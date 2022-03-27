@@ -9,6 +9,7 @@ globals [
   energy-consumption
   number-of-calves
   calf-stat-multiplier
+  initial-slow-stacks   ;; make the slowing effect of snow last a few ticks
 
   catches
   losts
@@ -29,7 +30,7 @@ bisons-own [
   angle
   energy                  ;; amount of energy left to do things
   tick-energy-consumption ;; accounts for slowed
-  slowed?                 ;; is the bison slowed by the snow?
+  slowed                  ;; is the bison slowed by the snow?
 ]
 
 wolves-own [
@@ -37,6 +38,8 @@ wolves-own [
   locked-on          ;; locked on prey if any
   delta-noise        ;; random rotation per update
   handle-time        ;; count down handle time
+  slowed             ;; is the wolf slowed by snow?
+  speed
 ]
 
 
@@ -53,6 +56,7 @@ to setup
   set energy-consumption 10
   set number-of-calves number-of-bisons * calve-pct / 100
   set calf-stat-multiplier 1
+  set initial-slow-stacks 5
   create-bisons number-of-bisons [
     set calf? false
     setxy random-xcor random-ycor
@@ -60,7 +64,7 @@ to setup
     set size 1.5 ; easier to see
     set happy? false
     set energy 9001
-    set slowed? false
+    set slowed 0
     recolor
   ]
   create-bisons number-of-calves [
@@ -70,7 +74,7 @@ to setup
     set size 1.5 * calf-stat-multiplier; easier to see
     set happy? false
     set energy 9001 * calf-stat-multiplier
-    set slowed? false
+    set slowed 0
     recolor
   ]
   set counter 0
@@ -95,15 +99,16 @@ to go
     setxy random-xcor random-ycor
     set nearest-prey nobody
     set locked-on nobody
+    set slowed 0
   ]]
   ;; wolf prep end
   ask bisons [
     clear-snow  ;; also sets the agenent slowed? to true if it needs to clear snow
-    ifelse slowed?
+    ifelse slowed > 0
     [
       set tick-energy-consumption energy-consumption * slowdown-energy-multiplier
       set tick-base-speed own-base-speed * slowdown-speed-multiplier
-      set slowed? false
+      set slowed slowed - 1
     ]
     [
       set tick-energy-consumption energy-consumption
@@ -149,8 +154,14 @@ to go
     ;  fd delta-speed
     ;]
     ask wolves [
+      clear-snow
       rt delta-noise
-      fd 0.1 * wolf-speed
+      set speed 0.1 * wolf-speed
+      if slowed > 0 [
+        set speed speed * slowdown-speed-multiplier
+        set slowed slowed - 1
+      ]
+      fd speed
     ]
     set t t + 1
   ]
@@ -165,7 +176,7 @@ end
 to clear-snow
   if pcolor = black or any? patches with [pcolor = black] in-cone snow-clear-radius snow-clear-angle [
       ;set pcolor red
-      set slowed? true
+      set slowed initial-slow-stacks
   ]
   ask patches in-cone snow-clear-radius snow-clear-angle
   [
@@ -660,7 +671,7 @@ wolf-speed
 wolf-speed
 0
 5
-0.6
+0.3
 0.1
 1
 patches/tick
@@ -673,7 +684,7 @@ SWITCH
 353
 hunting?
 hunting?
-0
+1
 1
 -1000
 
