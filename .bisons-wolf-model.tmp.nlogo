@@ -231,14 +231,17 @@ to detect-neighbors
   let look-left-distance 1
   let n-turtles-right 0
   let n-turtles-left 0
-  let max-bisons-left-and-right 2
+  let max-bisons-left- 2
+  let max-bisons-right 2
 
   ifelse winter?
   [
-    set max-bisons-left-and-right 2
+    set max-bisons-left 2
+    set max-bisons-right 2
   ]
   [
-    set max-bisons-left-and-right
+    set max-bisons-left 3
+    set max-bisons-right 3
   ]
 
   while [look-right-distance <= 3 ]
@@ -252,7 +255,7 @@ to detect-neighbors
     set look-left-distance look-left-distance + 1
   ]
 
-  if n-turtles-right > max-bisons-left-and-right or n-turtles-left > max-bisons-left-and-right
+  if n-turtles-right > max-bisons-right or n-turtles-left > max-bisons-left
   [
     ;set color red
     set slow-down true
