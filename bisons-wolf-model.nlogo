@@ -32,9 +32,9 @@ bisons-own [
   energy                  ;; amount of energy left to do things
   tick-energy-consumption ;; accounts for slowed
   slowed                  ;; is the bison slowed by the snow?
-  flockmates         ;; agentset of nearby turtles
-  nearest-neighbor   ;; closest one of our flockmates
   own-base-speed
+  flockmates              ;; agentset of nearby turtles
+  nearest-neighbor        ;; closest one of our flockmates
   slow-down
   slow-down-time
 ]
@@ -121,13 +121,17 @@ to go
   ;; wolf prep end
   ask bisons
   [
-    clear-snow  ;; also sets the agenent slowed to default amount of slowed if it needs to clear snow
+    if winter?
+    [
+      clear-snow  ;; also sets the agenent slowed to default amount of slowed if it needs to clear snow
+    ]  
     set speed own-base-speed
     if energy < 5000
     [
       set speed speed * fatigue-speed-multiplier
     ]
     set energy energy - 2
+    
     if slowed > 0
     [
       set speed own-base-speed * slowdown-speed-multiplier * size-slowdown-coeff
@@ -189,7 +193,10 @@ to go
     ]
     ;; add bison fleeing
     ask wolves [
-      clear-snow
+      if winter?
+      [
+        clear-snow
+      ]
       rt delta-noise
       set speed-wolf wolf-speed
       if slowed > 0
@@ -237,11 +244,22 @@ to move-forward-bisons-wolves
     display
   ]
 end
+
 to detect-neighbors
   let look-right-distance 1
   let look-left-distance 1
   let n-turtles-right 0
   let n-turtles-left 0
+  let max-bisons-left-and-right 2
+
+  ifelse winter?
+  [
+    set max-bisons-left-and-right 2
+  ]
+  [
+    set max-bisons-left-and-right
+  ]
+
   while [look-right-distance <= 3 ]
   [
     set n-turtles-right n-turtles-right + count turtles-on patch-right-and-ahead 90 look-right-distance
@@ -253,12 +271,13 @@ to detect-neighbors
     set look-left-distance look-left-distance + 1
   ]
 
-  if n-turtles-right > 2 or n-turtles-left > 2
+  if n-turtles-right > max-bisons-left-and-right or n-turtles-left > max-bisons-left-and-right
   [
     ;set color red
     set slow-down true
   ]
 end
+
 to find-flockmates  ;; turtle procedure
   set flockmates other turtles in-radius vision
 end
@@ -905,6 +924,17 @@ vision
 1
 patches
 HORIZONTAL
+
+SWITCH
+265
+525
+368
+558
+winter?
+winter?
+1
+1
+-1000
 
 @#$#@#$#@
 @#$#@#$#@
