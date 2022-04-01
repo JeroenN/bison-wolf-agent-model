@@ -5,8 +5,6 @@ breed [wolves wolf]
 globals [
   slowdown-speed-multiplier
   slowdown-energy-multiplier
-  slow-down-multiplier
-  fatigue-speed-multiplier
   snow-clear-radius
   snow-clear-angle
   energy-consumption
@@ -38,7 +36,6 @@ bisons-own [
   energy                  ;; amount of energy left to do things
   tick-energy-consumption ;; accounts for slowed
   slowed                  ;; is the bison slowed by the snow?
-  own-base-speed
   flockmates              ;; agentset of nearby turtles
   nearest-neighbor        ;; closest one of our flockmates
   slow-down
@@ -61,10 +58,8 @@ wolves-own [
 
 to setup
   clear-all
-  set slowdown-speed-multiplier 0.6
+  set slowdown-speed-multiplier 0.3
   set slowdown-energy-multiplier 2
-  set slow-down-multiplier 0.8
-  set fatigue-speed-multiplier 0.5
   set snow-clear-radius 1
   set snow-clear-angle 60
   set energy-consumption 10
@@ -76,7 +71,7 @@ to setup
     set calf? false
     setxy 50 + random-float 10 50 + random-float 10
     set heading 10 + random-float 10
-    set own-base-speed base-speed
+    set speed base-speed
     set size 1.5 ; easier to see
     set happy? false
     set energy 9001
@@ -90,7 +85,7 @@ to setup
     set calf? true
     setxy 50 + random-float 10 50 + random-float 10
     set heading 10 + random-float 10
-    set own-base-speed base-speed * calf-stat-multiplier
+    set speed base-speed
     set size 1.5
     set happy? false
     set energy 9001 * calf-stat-multiplier
@@ -130,29 +125,23 @@ to go
   [
     if winter?
     [
-      clear-snow  ;; also sets the agenent slowed to default amount of slowed if it needs to clear snow
-    ]  
-    set speed own-base-speed
-    if energy < 5000
-    [
-      set speed speed * fatigue-speed-multiplier
+      clear-snow  ;; also sets the agenent slowed? to true if it needs to clear snow
     ]
-    set energy energy - 2
-    
     if slowed > 0
     [
-      set speed own-base-speed * slowdown-speed-multiplier * size-slowdown-coeff
+      set speed 0.18
       set slowed slowed - 1
-      set energy energy - 10
     ]
 
     if slow-down = true
     [
-      ifelse slow-down-time >= 20
+      set speed 0.16
+      set slow-down-time slow-down-time + 1
+      if slow-down-time >= 20
       [
         set slow-down-time 0
         set slow-down false
-        ;set speed base-speed
+        set speed base-speed
         ifelse calf? = false
         [
           set color yellow
@@ -160,10 +149,6 @@ to go
         [
           set color green
         ]
-      ]
-      [
-        set speed speed * slow-down-multiplier
-        set slow-down-time slow-down-time + 1
       ]
     ]
     detect-neighbors
@@ -193,7 +178,8 @@ to go
     ]
     if t mod (11 - wolf-update-freq) = 0 [
       let dt 1 / wolf-update-freq
-      ask wolves [
+      ask wolves
+      [
         select-prey dt
         hunt dt
       ]
@@ -206,10 +192,10 @@ to go
         clear-snow
       ]
       rt delta-noise
-      set speed-wolf wolf-speed
+      ;set speed-wolf wolf-speed
       if slowed > 0
       [
-        set speed-wolf speed-wolf * slowdown-speed-multiplier * size-slowdown-coeff
+        ;set speed-wolf speed-wolf - 0.02
         set slowed slowed - 1
       ]
       let nearest-bison min-one-of bisons with [calf? = false] [distance myself]
@@ -232,10 +218,6 @@ to go
 
   move-forward-bisons-wolves
   tick
-end
-
-to-report size-slowdown-coeff
-  report size / 1.5
 end
 
 to move-forward-bisons-wolves
@@ -454,9 +436,12 @@ to hunt [dt] ;; wolf procedure
       turn-towards towards nearest-prey max-hunt-turn * dt
     ]
     [
-      let x-cor array:item prey-following-location 0
-      let y-cor array:item prey-following-location 1
-      turn-towards facexy x-cor y-cor max-hunt-turn * dt
+      ;let x-cor array:item prey-following-location 0
+      ;let y-cor array:item prey-following-location 1
+      ;facexy x-cor y-cor
+      let heading-location prey-following-location
+      turn-towards towards heading-location max-hunt-turn * dt
+      match-speed heading-location
     ]
     if locked-on != nobody [
       if locked-on = min-one-of bisons with [calf? = true] in-cone catch-distance 10 [distance myself]
@@ -474,17 +459,49 @@ to hunt [dt] ;; wolf procedure
   ]
 end
 
-to-report prey-following-location
-  let patch-location 3
-  let random-x random 10 - 5
-  let random-y random 10 - 5
-  let coordinates array:from-list n-values 2 [0]
-  ask patch-right-and-ahead 90 patch-location
+to match-speed [heading-location]
+  ifelse distance heading-location < 5
   [
-     array:set coordinates 0 pxcor + random-x
-     array:set coordinates 1 pycor + random-y
+    let prey-speed 0
+    ask nearest-prey
+    [
+      set prey-speed speed
+    ]
+    set speed-wolf prey-speed - 0.02
+
   ]
-  report coordinates
+  [
+    set speed-wolf wolf-speed
+  ]
+
+end
+
+to-report prey-following-location
+  let patch-location 5 + random 1
+  ;let random-x random 10 - 5
+  ;let random-y random 10 - 5
+  ;let coordinates array:from-list n-values 2 [0]
+  let patch-to-move-to-right one-of patches
+  let patch-to-move-to-left one-of patches
+  let nearest-patch one-of patches
+  ask nearest-prey
+  [
+     set patch-to-move-to-right patch-right-and-ahead 90 patch-location
+     set patch-to-move-to-left patch-left-and-ahead 90 patch-location
+
+     ;[
+       ; array:set coordinates 0 pxcor; + random-x
+      ;  array:set coordinates 1 pycor; + random-y
+     ;]
+  ]
+  ifelse distance patch-to-move-to-right < distance patch-to-move-to-left
+  [
+    set nearest-patch patch-to-move-to-right
+  ]
+  [
+    set nearest-patch patch-to-move-to-left
+  ]
+  report nearest-patch
 end
 
 to release-locked-on
@@ -736,7 +753,7 @@ wolf-speed
 wolf-speed
 0
 5
-1.05
+0.25
 0.05
 1
 NIL
@@ -988,7 +1005,7 @@ SWITCH
 558
 winter?
 winter?
-1
+0
 1
 -1000
 
