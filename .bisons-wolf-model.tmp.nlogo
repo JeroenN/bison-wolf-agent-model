@@ -85,7 +85,7 @@ to setup
     set calf? true
     setxy 50 + random-float 10 50 + random-float 10
     set heading 10 + random-float 10
-    set speed base-speed * calf-stat-multiplier
+    set speed base-speed
     set size 1.5
     set happy? false
     set energy 9001 * calf-stat-multiplier
@@ -178,7 +178,8 @@ to go
     ]
     if t mod (11 - wolf-update-freq) = 0 [
       let dt 1 / wolf-update-freq
-      ask wolves [
+      ask wolves
+      [
         select-prey dt
         hunt dt
       ]
@@ -191,10 +192,10 @@ to go
         clear-snow
       ]
       rt delta-noise
-      set speed-wolf wolf-speed
+      ;set speed-wolf wolf-speed
       if slowed > 0
       [
-        set speed-wolf speed-wolf - 0.02
+        ;set speed-wolf speed-wolf - 0.02
         set slowed slowed - 1
       ]
       let nearest-bison min-one-of bisons with [calf? = false] [distance myself]
@@ -435,9 +436,12 @@ to hunt [dt] ;; wolf procedure
       turn-towards towards nearest-prey max-hunt-turn * dt
     ]
     [
-      let x-cor array:item prey-following-location 0
-      let y-cor array:item prey-following-location 1
-      turn-towards facexy x-cor y-cor max-hunt-turn * dt
+      ;let x-cor array:item prey-following-location 0
+      ;let y-cor array:item prey-following-location 1
+      ;facexy x-cor y-cor
+      let heading-location prey-following-location
+      turn-towards towards heading-location max-hunt-turn * dt
+      match-speed heading-location
     ]
     if locked-on != nobody [
       if locked-on = min-one-of bisons with [calf? = true] in-cone catch-distance 10 [distance myself]
@@ -455,17 +459,49 @@ to hunt [dt] ;; wolf procedure
   ]
 end
 
-to-report prey-following-location
-  let patch-location 3
-  let random-x random 10 - 5
-  let random-y random 10 - 5
-  let coordinates array:from-list n-values 2 [0]
-  ask patch-right-and-ahead 90 patch-location
+to match-speed [heading-location]
+  ifelse distance heading-location < 5
   [
-     array:set coordinates 0 pxcor + random-x
-     array:set coordinates 1 pycor + random-y
+    let prey-speed 0
+    ask nearest-prey
+    [
+      set prey-speed speed
+    ]
+    set speed-wolf prey-speed - 0.02
+
   ]
-  report coordinates
+  [
+    set speed-wolf wolf-speed
+  ]
+
+end
+
+to-report prey-following-location
+  let patch-location 5 + random 1
+  ;let random-x random 10 - 5
+  ;let random-y random 10 - 5
+  ;let coordinates array:from-list n-values 2 [0]
+  let patch-to-move-to-right one-of patches
+  let patch-to-move-to-left one-of patches
+  let nearest-patch one-of patches
+  ask nearest-prey
+  [
+     set patch-to-move-to-right patch-right-and-ahead 90 patch-location
+     set patch-to-move-to-left patch-left-and-ahead 90 patch-location
+
+     ;[
+       ; array:set coordinates 0 pxcor; + random-x
+      ;  array:set coordinates 1 pycor; + random-y
+     ;]
+  ]
+  ifelse distance patch-to-move-to-right < distance patch-to-move-to-left
+  [
+    set nearest-patch patch-to-move-to-right
+  ]
+  [
+    set nearest-patch patch-to-move-to-left
+  ]
+  report nearest-patch
 end
 
 to release-locked-on
@@ -717,7 +753,7 @@ wolf-speed
 wolf-speed
 0
 5
-1.05
+0.25
 0.05
 1
 NIL
@@ -969,7 +1005,7 @@ SWITCH
 558
 winter?
 winter?
-1
+0
 1
 -1000
 
