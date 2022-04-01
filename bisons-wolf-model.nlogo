@@ -4,6 +4,8 @@ breed [wolves wolf]
 globals [
   slowdown-speed-multiplier
   slowdown-energy-multiplier
+  slow-down-multiplier
+  fatigue-speed-multiplier
   snow-clear-radius
   snow-clear-angle
   energy-consumption
@@ -30,6 +32,7 @@ bisons-own [
   energy                  ;; amount of energy left to do things
   tick-energy-consumption ;; accounts for slowed
   slowed                  ;; is the bison slowed by the snow?
+  own-base-speed
   flockmates              ;; agentset of nearby turtles
   nearest-neighbor        ;; closest one of our flockmates
   slow-down
@@ -52,8 +55,10 @@ wolves-own [
 
 to setup
   clear-all
-  set slowdown-speed-multiplier 0.3
+  set slowdown-speed-multiplier 0.6
   set slowdown-energy-multiplier 2
+  set slow-down-multiplier 0.8
+  set fatigue-speed-multiplier 0.5
   set snow-clear-radius 1
   set snow-clear-angle 60
   set energy-consumption 10
@@ -65,7 +70,7 @@ to setup
     set calf? false
     setxy 50 + random-float 10 50 + random-float 10
     set heading 10 + random-float 10
-    set speed base-speed
+    set own-base-speed base-speed
     set size 1.5 ; easier to see
     set happy? false
     set energy 9001
@@ -79,7 +84,7 @@ to setup
     set calf? true
     setxy 50 + random-float 10 50 + random-float 10
     set heading 10 + random-float 10
-    set speed base-speed * calf-stat-multiplier
+    set own-base-speed base-speed * calf-stat-multiplier
     set size 1.5
     set happy? false
     set energy 9001 * calf-stat-multiplier
@@ -118,23 +123,29 @@ to go
   [
     if winter?
     [
-      clear-snow  ;; also sets the agenent slowed? to true if it needs to clear snow
+      clear-snow  ;; also sets the agenent slowed to default amount of slowed if it needs to clear snow
+    ]  
+    set speed own-base-speed
+    if energy < 5000
+    [
+      set speed speed * fatigue-speed-multiplier
     ]
+    set energy energy - 2
+    
     if slowed > 0
     [
-      set speed 0.18
+      set speed own-base-speed * slowdown-speed-multiplier * size-slowdown-coeff
       set slowed slowed - 1
+      set energy energy - 10
     ]
 
     if slow-down = true
     [
-      set speed 0.16
-      set slow-down-time slow-down-time + 1
-      if slow-down-time >= 20
+      ifelse slow-down-time >= 20
       [
         set slow-down-time 0
         set slow-down false
-        set speed base-speed
+        ;set speed base-speed
         ifelse calf? = false
         [
           set color yellow
@@ -142,6 +153,10 @@ to go
         [
           set color green
         ]
+      ]
+      [
+        set speed speed * slow-down-multiplier
+        set slow-down-time slow-down-time + 1
       ]
     ]
     detect-neighbors
@@ -186,7 +201,7 @@ to go
       set speed-wolf wolf-speed
       if slowed > 0
       [
-        set speed-wolf speed-wolf - 0.02
+        set speed-wolf speed-wolf * slowdown-speed-multiplier * size-slowdown-coeff
         set slowed slowed - 1
       ]
       let nearest-bison min-one-of bisons with [calf? = false] [distance myself]
@@ -209,6 +224,10 @@ to go
 
   move-forward-bisons-wolves
   tick
+end
+
+to-report size-slowdown-coeff
+  report size / 1.5
 end
 
 to move-forward-bisons-wolves
