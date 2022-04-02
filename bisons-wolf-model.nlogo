@@ -237,21 +237,6 @@ to go
   tick
 end
 
-;to print-csv [n]
-;  let all-data [[”catches” ”losts” ”lock-ons”]]
-;  set data lput (list catches losts lock-ons)
-;  num−people = 50
-;  while [num−people <= 200] [
-;    let data []
-;    repeat n [
-;    set data lput get−time−to−100%−infected data
-;    ]
-;    set all−data lput (list num−people (mean data) ((standard−deviation data) / (sqrt n))) all−data
-;    set num−people num−people + 10
-;  ]
-;  csv:to-file ”data-file.csv” all-data
-;end
-
 to-report size-slowdown-coeff
   report size / 1.5
 end
