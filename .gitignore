@@ -1,2 +1,3 @@
 .bisons-wolf-model.tmp.nlogo
+*.tmp*
 **/*.swp
