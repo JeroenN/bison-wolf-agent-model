@@ -1,4 +1,4 @@
-extensions [array]
+extensions [array csv]
 breed [bisons bison]
 breed [wolves wolf]
 
@@ -100,6 +100,9 @@ to setup
   set counter 0
   set lock-ons 0
   set ordetect 8
+  let filename "output.csv"
+  file-open filename
+  file-print csv:to-row ["catches" "losts" "lock-ons"]
   reset-ticks
 end
 
@@ -131,14 +134,14 @@ to go
     if winter?
     [
       clear-snow  ;; also sets the agenent slowed to default amount of slowed if it needs to clear snow
-    ]  
+    ]
     set speed own-base-speed
     if energy < 5000
     [
       set speed speed * fatigue-speed-multiplier
     ]
     set energy energy - 2
-    
+
     if slowed > 0
     [
       set speed own-base-speed * slowdown-speed-multiplier * size-slowdown-coeff
@@ -229,10 +232,25 @@ to go
     set hunting? true
     set detection-range ordetect
   ]
-
   move-forward-bisons-wolves
+  file-print csv:to-row (list catches losts lock-ons)
   tick
 end
+
+;to print-csv [n]
+;  let all-data [[”catches” ”losts” ”lock-ons”]]
+;  set data lput (list catches losts lock-ons)
+;  num−people = 50
+;  while [num−people <= 200] [
+;    let data []
+;    repeat n [
+;    set data lput get−time−to−100%−infected data
+;    ]
+;    set all−data lput (list num−people (mean data) ((standard−deviation data) / (sqrt n))) all−data
+;    set num−people num−people + 10
+;  ]
+;  csv:to-file ”data-file.csv” all-data
+;end
 
 to-report size-slowdown-coeff
   report size / 1.5
@@ -456,7 +474,8 @@ to hunt [dt] ;; wolf procedure
     [
       let x-cor array:item prey-following-location 0
       let y-cor array:item prey-following-location 1
-      turn-towards facexy x-cor y-cor max-hunt-turn * dt
+      ;turn-towards facexy x-cor y-cor max-hunt-turn * dt ;;ERROR
+      turn-towards atan x-cor y-cor max-hunt-turn * dt
     ]
     if locked-on != nobody [
       if locked-on = min-one-of bisons with [calf? = true] in-cone catch-distance 10 [distance myself]
